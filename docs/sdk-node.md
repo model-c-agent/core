@@ -188,7 +188,7 @@ const keys = JSON.parse(keysJson);
 
 #### `importWalletMnemonic(name, mnemonic, passphrase?, index?, vaultPath?)`
 
-Import a wallet from a BIP-39 mnemonic. Derives all 8 chain accounts via HD paths.
+Import a wallet from a BIP-39 mnemonic. Derives all 9 chain accounts via HD paths.
 
 ```javascript
 const wallet = importWalletMnemonic("imported", "goose puzzle decorate ...");
@@ -207,13 +207,13 @@ Alternatively, provide explicit keys for each curve via `secp256k1Key` and `ed25
 ```javascript
 // Import an EVM private key — generates a random Ed25519 key for Solana/Sui/TON
 const wallet = importWalletPrivateKey("from-evm", "4c0883a691...");
-console.log(wallet.accounts.length); // => 8
+console.log(wallet.accounts.length); // => 9
 
 // Import a Solana private key — generates a random secp256k1 key for EVM/BTC/etc.
 const wallet2 = importWalletPrivateKey(
   "from-solana", "9d61b19d...", undefined, undefined, "solana"
 );
-console.log(wallet2.accounts.length); // => 8
+console.log(wallet2.accounts.length); // => 9
 
 // Import explicit keys for both curves
 const wallet3 = importWalletPrivateKey(
@@ -221,7 +221,7 @@ const wallet3 = importWalletPrivateKey(
   "4c0883a691...",  // secp256k1 key
   "9d61b19d..."     // ed25519 key
 );
-console.log(wallet3.accounts.length); // => 8
+console.log(wallet3.accounts.length); // => 9
 ```
 
 | Param | Type | Default | Description |
