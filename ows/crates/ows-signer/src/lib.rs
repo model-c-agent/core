@@ -245,6 +245,8 @@ mod integration_tests {
             ChainType::Ton,
             ChainType::Spark,
             ChainType::Filecoin,
+            ChainType::Sui,
+            ChainType::Stellar,
         ] {
             let signer = signer_for_chain(chain);
             assert_eq!(signer.chain_type(), chain);
