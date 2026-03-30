@@ -38,6 +38,7 @@ OWS groups chains into families that share a cryptographic curve and address der
 | Sui | ed25519 | 784 | `m/44'/784'/{index}'/0'/0'` | `0x` + BLAKE2b-256 hex (32 bytes) | `sui` |
 | Spark | secp256k1 | 8797555 | `m/84'/0'/0'/0/{index}` | `spark:` + compressed pubkey hex | `spark` |
 | Filecoin | secp256k1 | 461 | `m/44'/461'/0'/0/{index}` | `f1` + base32(blake2b-160) | `fil` |
+| Stellar | ed25519 | 148 | `m/44'/148'/{index}'` | StrKey base32 (`G...`, 56 chars) | `stellar` |
 
 ## Known Networks
 
@@ -68,6 +69,7 @@ Each network has a canonical chain identifier. Endpoint discovery and transport 
 | Sui | `sui:mainnet` |
 | Spark | `spark:mainnet` |
 | Filecoin | `fil:mainnet` |
+| Stellar | `stellar:pubnet` |
 
 Implementations MAY ship convenience endpoint defaults, but those defaults are deployment choices rather than OWS interoperability requirements.
 
@@ -92,6 +94,7 @@ ton       → ton:mainnet
 sui       → sui:mainnet
 spark     → spark:mainnet
 filecoin  → fil:mainnet
+stellar   → stellar:pubnet
 ```
 
 Aliases MUST be resolved to full CAIP-2 identifiers before any processing. They MUST NOT appear in wallet files, policy files, or audit logs.
@@ -114,7 +117,8 @@ Master Seed (512 bits via PBKDF2)
     ├── m/44'/607'/0'       → TON Account 0
     ├── m/44'/784'/0'/0'/0' → Sui Account 0
     ├── m/84'/0'/0'/0/0     → Spark Account 0
-    └── m/44'/461'/0'/0/0   → Filecoin Account 0
+    ├── m/44'/461'/0'/0/0   → Filecoin Account 0
+    └── m/44'/148'/0'       → Stellar Account 0
 ```
 
 A single mnemonic derives accounts across all supported chains. The wallet file stores the encrypted mnemonic; the signer derives the appropriate private key using each chain's coin type and derivation path.
