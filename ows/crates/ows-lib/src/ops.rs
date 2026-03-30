@@ -520,6 +520,33 @@ pub fn sign_typed_data(
     })
 }
 
+/// Sign a chain-specific authorization entry. Returns hex-encoded signature.
+///
+/// Currently only supported for Stellar (Soroban authorization entries).
+/// The `auth_entry_hex` should be the hex-encoded XDR `HashIdPreimage` body.
+pub fn sign_auth_entry(
+    wallet: &str,
+    chain: &str,
+    auth_entry_hex: &str,
+    passphrase: Option<&str>,
+    index: Option<u32>,
+    vault_path: Option<&Path>,
+) -> Result<SignResult, OwsLibError> {
+    let credential = passphrase.unwrap_or("");
+    let chain = parse_chain(chain)?;
+    let auth_bytes = hex::decode(auth_entry_hex)
+        .map_err(|e| OwsLibError::InvalidInput(format!("invalid hex auth entry: {e}")))?;
+
+    let key = decrypt_signing_key(wallet, chain.chain_type, credential, index, vault_path)?;
+    let signer = signer_for_chain(chain.chain_type);
+    let output = signer.sign_auth_entry(key.expose(), &auth_bytes)?;
+
+    Ok(SignResult {
+        signature: hex::encode(&output.signature),
+        recovery_id: output.recovery_id,
+    })
+}
+
 /// Sign and broadcast a transaction. Returns the transaction hash.
 ///
 /// The `passphrase` parameter accepts either the owner's passphrase or an
