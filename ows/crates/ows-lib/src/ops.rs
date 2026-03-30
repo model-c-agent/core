@@ -689,7 +689,40 @@ fn broadcast(chain: ChainType, rpc_url: &str, signed_bytes: &[u8]) -> Result<Str
             "broadcast not yet supported for Filecoin".into(),
         )),
         ChainType::Sui => broadcast_sui(rpc_url, signed_bytes),
+        ChainType::Stellar => broadcast_stellar(rpc_url, signed_bytes),
     }
+}
+
+fn broadcast_stellar(rpc_url: &str, signed_bytes: &[u8]) -> Result<String, OwsLibError> {
+    use base64::Engine;
+    let b64_tx = base64::engine::general_purpose::STANDARD.encode(signed_bytes);
+    let url = format!("{}/transactions", rpc_url.trim_end_matches('/'));
+    let form_body = format!("tx={}", b64_tx);
+    let output = Command::new("curl")
+        .args([
+            "-fsSL",
+            "-X",
+            "POST",
+            "-H",
+            "Content-Type: application/x-www-form-urlencoded",
+            "-d",
+            &form_body,
+            &url,
+        ])
+        .output()
+        .map_err(|e| OwsLibError::BroadcastFailed(format!("failed to run curl: {e}")))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(OwsLibError::BroadcastFailed(format!(
+            "broadcast failed: {stderr}"
+        )));
+    }
+    let resp = String::from_utf8_lossy(&output.stdout).to_string();
+    let parsed: serde_json::Value = serde_json::from_str(&resp)?;
+    parsed["hash"]
+        .as_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| OwsLibError::BroadcastFailed(format!("no hash in response: {resp}")))
 }
 
 fn broadcast_evm(rpc_url: &str, signed_bytes: &[u8]) -> Result<String, OwsLibError> {
@@ -925,7 +958,9 @@ mod tests {
     #[test]
     fn derive_address_all_chains() {
         let phrase = generate_mnemonic(12).unwrap();
-        let chains = ["evm", "solana", "bitcoin", "cosmos", "tron", "ton", "sui"];
+        let chains = [
+            "evm", "solana", "bitcoin", "cosmos", "tron", "ton", "sui", "stellar",
+        ];
         for chain in &chains {
             let addr = derive_address(&phrase, chain, None).unwrap();
             assert!(!addr.is_empty(), "address should be non-empty for {chain}");
@@ -1006,7 +1041,7 @@ mod tests {
         create_wallet("multi-sign", None, None, Some(vault)).unwrap();
 
         let chains = [
-            "evm", "solana", "bitcoin", "cosmos", "tron", "ton", "spark", "sui",
+            "evm", "solana", "bitcoin", "cosmos", "tron", "ton", "spark", "sui", "stellar",
         ];
         for chain in &chains {
             let result = sign_message(
@@ -1046,7 +1081,7 @@ mod tests {
         let solana_tx_hex = hex::encode(&solana_tx);
 
         let chains = [
-            "evm", "solana", "bitcoin", "cosmos", "tron", "ton", "spark", "sui",
+            "evm", "solana", "bitcoin", "cosmos", "tron", "ton", "spark", "sui", "stellar",
         ];
         for chain in &chains {
             let tx = if *chain == "solana" {
@@ -2024,6 +2059,7 @@ mod tests {
             ("tron", true),
             ("ton", false),
             ("sui", false),
+            ("stellar", false),
         ];
         for (chain, has_recovery_id) in &chains {
             let result = sign_message(

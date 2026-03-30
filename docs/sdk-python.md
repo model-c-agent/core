@@ -162,7 +162,7 @@ keys = json.loads(export_wallet("pk-wallet"))
 
 #### `import_wallet_mnemonic(name, mnemonic, passphrase=None, index=None, vault_path=None)`
 
-Import a wallet from a BIP-39 mnemonic. Derives all 8 chain accounts via HD paths.
+Import a wallet from a BIP-39 mnemonic. Derives all 9 chain accounts via HD paths.
 
 ```python
 wallet = import_wallet_mnemonic("imported", "goose puzzle decorate ...")
