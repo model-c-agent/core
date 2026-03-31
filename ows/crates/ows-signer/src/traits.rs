@@ -77,6 +77,25 @@ pub trait ChainSigner: Send + Sync {
         )))
     }
 
+    /// Sign a chain-specific authorization entry.
+    ///
+    /// Some chains have signing contexts beyond transactions and messages.
+    /// For example, Stellar's Soroban smart contracts require signing
+    /// authorization entries with a different envelope type tag.
+    ///
+    /// The default implementation returns an error — chains must opt in.
+    fn sign_auth_entry(
+        &self,
+        private_key: &[u8],
+        auth_entry: &[u8],
+    ) -> Result<SignOutput, SignerError> {
+        let _ = (private_key, auth_entry);
+        Err(SignerError::InvalidTransaction(format!(
+            "sign_auth_entry not supported for {}",
+            self.chain_type()
+        )))
+    }
+
     /// Returns the default BIP-44 derivation path template for this chain.
     fn default_derivation_path(&self, index: u32) -> String;
 }
