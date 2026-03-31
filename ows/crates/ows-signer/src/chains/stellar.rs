@@ -41,7 +41,7 @@ const PUBNET_NETWORK_ID: [u8; 32] = [
 const ENVELOPE_TYPE_TX: [u8; 4] = [0x00, 0x00, 0x00, 0x02];
 
 /// Envelope type for Soroban authorization entry signing.
-/// Used by `sign_soroban_auth_entry` for Soroban-specific signing contexts.
+/// Used by `sign_auth_entry` for Soroban-specific signing contexts.
 const ENVELOPE_TYPE_SOROBAN_AUTHORIZATION: u32 = 29;
 
 /// Stellar public network (pubnet) passphrase.
@@ -174,33 +174,6 @@ impl StellarSigner {
         })?;
         Ok(SigningKey::from_bytes(&key_bytes))
     }
-
-    /// Sign a Soroban authorization entry.
-    ///
-    /// Uses `ENVELOPE_TYPE_SOROBAN_AUTHORIZATION` (29) as the envelope type tag
-    /// in the signing preimage. The `auth_entry` should be the XDR-encoded
-    /// `HashIdPreimage` body for the authorization.
-    ///
-    /// This is a non-trait helper that reuses `compute_stellar_hash` with
-    /// envelope type 29 instead of 2, demonstrating Soroban extensibility.
-    pub fn sign_soroban_auth_entry(
-        private_key: &[u8],
-        auth_entry: &[u8],
-    ) -> Result<SignOutput, SignerError> {
-        let signing_key = Self::signing_key(private_key)?;
-        let digest = compute_stellar_hash(
-            NETWORK_PASSPHRASE_PUBNET,
-            ENVELOPE_TYPE_SOROBAN_AUTHORIZATION,
-            auth_entry,
-        );
-        let signature = signing_key.sign(&digest);
-        let verifying_key = signing_key.verifying_key();
-        Ok(SignOutput {
-            signature: signature.to_bytes().to_vec(),
-            recovery_id: None,
-            public_key: Some(verifying_key.as_bytes().to_vec()),
-        })
-    }
 }
 
 impl ChainSigner for StellarSigner {
@@ -266,7 +239,7 @@ impl ChainSigner for StellarSigner {
         let signing_key = Self::signing_key(private_key)?;
 
         // Use compute_stellar_hash -- the shared primitive that also supports
-        // Soroban auth entry signing (envelope type 29) via sign_soroban_auth_entry.
+        // Soroban auth entry signing (envelope type 29) via sign_auth_entry.
         let digest = compute_stellar_hash(NETWORK_PASSPHRASE_PUBNET, 2, tx_bytes);
 
         let signature = signing_key.sign(&digest);
@@ -345,6 +318,31 @@ impl ChainSigner for StellarSigner {
     ///
     /// Path: `m/44'/148'/{index}'` -- all components hardened, 3 levels deep.
     /// Identical in structure to TON's `m/44'/607'/{index}'`.
+    /// Sign a Soroban authorization entry.
+    ///
+    /// Uses `ENVELOPE_TYPE_SOROBAN_AUTHORIZATION` (29) in the signing preimage
+    /// instead of `ENVELOPE_TYPE_TX` (2). The `auth_entry` should be the
+    /// XDR-encoded `HashIdPreimage` body for the authorization.
+    fn sign_auth_entry(
+        &self,
+        private_key: &[u8],
+        auth_entry: &[u8],
+    ) -> Result<SignOutput, SignerError> {
+        let signing_key = StellarSigner::signing_key(private_key)?;
+        let digest = compute_stellar_hash(
+            NETWORK_PASSPHRASE_PUBNET,
+            ENVELOPE_TYPE_SOROBAN_AUTHORIZATION,
+            auth_entry,
+        );
+        let signature = signing_key.sign(&digest);
+        let verifying_key = signing_key.verifying_key();
+        Ok(SignOutput {
+            signature: signature.to_bytes().to_vec(),
+            recovery_id: None,
+            public_key: Some(verifying_key.as_bytes().to_vec()),
+        })
+    }
+
     fn default_derivation_path(&self, index: u32) -> String {
         format!("m/44'/148'/{}'", index) // SEP-0005: m/44'/148'/index'
     }
@@ -874,11 +872,11 @@ mod tests {
     // ---------------------------------------------------------------
 
     #[test]
-    fn test_sign_soroban_auth_entry() {
+    fn test_sign_auth_entry() {
         let privkey = test_privkey();
         let auth_entry = b"fake_soroban_auth_entry_xdr";
 
-        let result = StellarSigner::sign_soroban_auth_entry(&privkey, auth_entry).unwrap();
+        let result = StellarSigner.sign_auth_entry(&privkey, auth_entry).unwrap();
         assert_eq!(result.signature.len(), 64);
         assert!(result.public_key.is_some());
 
@@ -902,7 +900,7 @@ mod tests {
         let body = b"same_body";
 
         let tx_result = StellarSigner.sign_transaction(&privkey, body).unwrap();
-        let auth_result = StellarSigner::sign_soroban_auth_entry(&privkey, body).unwrap();
+        let auth_result = StellarSigner.sign_auth_entry(&privkey, body).unwrap();
 
         assert_ne!(
             tx_result.signature, auth_result.signature,
@@ -911,8 +909,8 @@ mod tests {
     }
 
     #[test]
-    fn test_sign_soroban_auth_entry_invalid_key() {
+    fn test_sign_auth_entry_invalid_key() {
         let bad_key = vec![0u8; 16];
-        assert!(StellarSigner::sign_soroban_auth_entry(&bad_key, b"auth").is_err());
+        assert!(StellarSigner.sign_auth_entry(&bad_key, b"auth").is_err());
     }
 }
