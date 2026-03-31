@@ -234,6 +234,35 @@ fn sign_typed_data(
     })
 }
 
+/// Sign a chain-specific authorization entry (e.g. Stellar Soroban).
+#[pyfunction]
+#[pyo3(signature = (wallet, chain, auth_entry_hex, passphrase=None, index=None, vault_path_opt=None))]
+fn sign_auth_entry(
+    wallet: &str,
+    chain: &str,
+    auth_entry_hex: &str,
+    passphrase: Option<&str>,
+    index: Option<u32>,
+    vault_path_opt: Option<String>,
+) -> PyResult<PyObject> {
+    let result = ows_lib::sign_auth_entry(
+        wallet,
+        chain,
+        auth_entry_hex,
+        passphrase,
+        index,
+        vault_path(vault_path_opt).as_deref(),
+    )
+    .map_err(map_err)?;
+
+    Python::with_gil(|py| {
+        let dict = pyo3::types::PyDict::new(py);
+        dict.set_item("signature", &result.signature)?;
+        dict.set_item("recovery_id", result.recovery_id)?;
+        Ok(dict.unbind().into())
+    })
+}
+
 /// Sign and broadcast a transaction.
 #[pyfunction]
 #[pyo3(signature = (wallet, chain, tx_hex, passphrase=None, index=None, rpc_url=None, vault_path_opt=None))]
@@ -426,6 +455,7 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(sign_transaction, m)?)?;
     m.add_function(wrap_pyfunction!(sign_message, m)?)?;
     m.add_function(wrap_pyfunction!(sign_typed_data, m)?)?;
+    m.add_function(wrap_pyfunction!(sign_auth_entry, m)?)?;
     m.add_function(wrap_pyfunction!(sign_and_send, m)?)?;
     m.add_function(wrap_pyfunction!(create_policy, m)?)?;
     m.add_function(wrap_pyfunction!(list_policies, m)?)?;
